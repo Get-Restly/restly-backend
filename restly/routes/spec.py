@@ -10,10 +10,42 @@ from pydantic import BaseModel
 from ..db import db
 from ..models import Spec, get_current_user
 from ..prompts import RELEVANT_APIS_PROMPT
-from ..types import ApiEndpoint
+from ..types import ApiEndpoint, SpecModel, SpecLiteModel
 from ..utils import SpecFormatter
 
 spec_bp = Blueprint("spec", __name__)
+
+
+DEFAULT_SPEC_TITLE = "unknown"
+DEFAULT_SPEC_VERSION = "1.0.0"
+
+
+class ListSpecsResponse(BaseModel):
+    specs: list[SpecLiteModel]
+
+
+@spec_bp.route("/api/v1/specs", methods=["GET"])
+@validate()
+def list_specs():
+    user = get_current_user()
+    specs = Spec.query.filter_by(user_id=user.id).all()
+    models = [SpecLiteModel(id=spec.id, name=spec.name) for spec in specs]
+    return ListSpecsResponse(specs=models)
+
+
+class GetSpecResponse(BaseModel):
+    spec: SpecModel
+
+
+@spec_bp.route("/api/v1/specs/<int:id>", methods=["GET"])
+@validate()
+def get_spec(id):
+    user = get_current_user()
+    spec: Optional[Spec] = Spec.query.filter_by(id=id, user_id=user.id).first()
+    if not spec:
+        jsonify({"error": "Spec not found"}), 404
+    model = SpecModel(id=spec.id, name=spec.name, url=spec.url, content=spec.content)
+    return GetSpecResponse(spec=model)
 
 
 class CreateSpecRequest(BaseModel):
@@ -22,16 +54,23 @@ class CreateSpecRequest(BaseModel):
 
 class CreateSpecResponse(BaseModel):
     id: int
+    name: str
     spec: dict  # TODO: define spec model https://swagger.io/specification/
 
 
-@spec_bp.route("/api/v1/spec", methods=["POST"])
+@spec_bp.route("/api/v1/specs", methods=["POST"])
 @validate()
 def create_spec(body: CreateSpecRequest):
-    content = requests.get(body.url).json()
     user = get_current_user()
+    content = requests.get(body.url).json()
+
+    spec_info = content.get("info", {})
+    spec_title = spec_info.get("title", DEFAULT_SPEC_TITLE)
+    spec_version = spec_info.get("version", DEFAULT_SPEC_VERSION)
+    name = f"{spec_title} - {spec_version}"
 
     spec = Spec(
+        name=name,
         url=body.url,
         content=dumps(content),
         user_id=user.id,
@@ -42,23 +81,24 @@ def create_spec(body: CreateSpecRequest):
 
     return CreateSpecResponse(
         id=spec.id,
+        name=spec.name,
         spec=content,
     )
 
 
 class RelevantApisRequest(BaseModel):
     query: str
-    count: int
 
 
 class RelevantApisResponse(BaseModel):
     apis: list[ApiEndpoint]
 
 
-@spec_bp.route("/api/v1/spec/<int:id>/relevant-apis", methods=["POST"])
+@spec_bp.route("/api/v1/specs/<int:id>/relevant-apis", methods=["POST"])
 @validate()
 def relevant_apis(id, body: RelevantApisRequest):
-    spec: Optional[Spec] = Spec.query.get(id)
+    user = get_current_user()
+    spec = Spec.query.filter_by(id=id, user_id=user.id).first()
     if not spec:
         jsonify({"error": "Spec not found"}), 404
 
