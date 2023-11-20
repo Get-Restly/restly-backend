@@ -17,3 +17,5 @@ pip install -r requirements.txt
 ```
 flask run
 ```
+
+NOTE: You can use instance/project.db file for sqlite.
