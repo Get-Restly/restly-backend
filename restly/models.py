@@ -25,6 +25,7 @@ class User(TimestampMixin, db.Model):
 
 class Spec(TimestampMixin, db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(db.String, nullable=False)
     url: Mapped[str] = mapped_column(db.String, nullable=False)
     content: Mapped[str] = mapped_column(db.String, nullable=False)
     user_id: Mapped[int] = mapped_column(
@@ -34,11 +35,12 @@ class Spec(TimestampMixin, db.Model):
 
 class Tutorial(TimestampMixin, db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
-    query: Mapped[str] = mapped_column(db.String, nullable=False)
-    relevant_apis: Mapped[str] = mapped_column(db.String, nullable=False)
+    name: Mapped[str] = mapped_column(db.String, nullable=False)
+    input: Mapped[str] = mapped_column(db.String, nullable=False, default="")
+    relevant_apis: Mapped[str] = mapped_column(db.String, nullable=False, default="")
     content: Mapped[str] = mapped_column(db.String, nullable=False, default="")
     spec_id: Mapped[int] = mapped_column(
-        db.Integer, db.ForeignKey("spec.id"), nullable=False
+        db.Integer, db.ForeignKey("spec.id"), nullable=True
     )
     user_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
