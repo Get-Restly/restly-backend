@@ -1,7 +1,11 @@
-from flask import Flask
-from .config import DevelopmentConfig, ProductionConfig
-from .routes import routes_bp
 import os
+
+from flask import Flask
+
+from .config import DevelopmentConfig, ProductionConfig
+from .db import db
+from .routes import routes_bp
+from .models import User, Spec, Tutorial
 
 
 def create_app():
@@ -14,5 +18,9 @@ def create_app():
         app.config.from_object(ProductionConfig)
 
     app.register_blueprint(routes_bp)
+    db.init_app(app)
+
+    with app.app_context():
+        db.create_all()
 
     return app
