@@ -26,3 +26,5 @@ instance/
 
 
 .DS_Store
+
+.vscode
