@@ -72,7 +72,7 @@ def create_tutorial(body: CreateTutorialRequest):
 
 
 class GenerateTutorialRequest(BaseModel):
-    spec_id: int
+    specId: int
     query: str
     apis: list[ApiEndpoint]
 
@@ -87,7 +87,7 @@ class GenerateTutorialResponse(BaseModel):
 def generate_tutorial_content(id: int, body: GenerateTutorialRequest):
     user = get_current_user()
     spec: Optional[Spec] = Spec.query.filter_by(
-        id=body.spec_id, user_id=user.id
+        id=body.specId, user_id=user.id
     ).first()
     if not spec:
         return jsonify({"error": "Spec not found"}), 404
