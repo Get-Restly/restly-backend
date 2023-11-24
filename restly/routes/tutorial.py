@@ -11,9 +11,16 @@ from ..models import Spec, Tutorial, get_current_user
 from ..prompts import GENERATE_TUTORIAL_PROMPT
 from ..types import ApiEndpoint, ApiEndpointList, TutorialModel, TutorialLiteModel
 from ..utils import SpecFormatter
+import logging
+
+from flask import Response, stream_with_context
+from openai.types.chat import ChatCompletionChunk
+from openai._streaming import Stream
+from flask import after_this_request
+
 
 tutorial_bp = Blueprint("tutorial", __name__)
-
+logging.basicConfig(level=logging.INFO)
 
 class ListTutorialsResponse(BaseModel):
     tutorials: list[TutorialLiteModel]
@@ -96,21 +103,41 @@ def generate_tutorial_content(id: int, body: GenerateTutorialRequest):
     if not tutorial:
         return jsonify({"error": "Tutorial not found"}), 404
 
-    content = generate_content(loads(spec.content), body.query, body.apis)
+    def on_completion(content_aggregated):
+        tutorial.content = content_aggregated
+        tutorial.input = body.query
+        tutorial.relevant_apis = relevant_apis
+        tutorial.spec_id = spec.id
+
+        db.session.add(tutorial)
+        db.session.commit()
+    
+    # Streams the response
+    completion = generate_content(loads(spec.content), body.query, body.apis)
+    def generate():
+        content_aggregated = ''
+        try:
+            for chunk in completion:
+                for choice in chunk.choices:
+                    content = choice.delta.content
+                    if content is not None:
+                        content_aggregated += content
+                        yield content
+        finally:
+            on_completion(content_aggregated)
+
     relevant_apis = ApiEndpointList(apis=body.apis).model_dump_json()
 
-    tutorial.content = content
-    tutorial.input = body.query
-    tutorial.relevant_apis = relevant_apis
-    tutorial.spec_id = spec.id
+    # return GenerateTutorialResponse(
+    #     id=tutorial.id,
+    #     content=content,
+    # )
 
-    db.session.add(tutorial)
-    db.session.commit()
-
-    return GenerateTutorialResponse(
-        id=tutorial.id,
-        content=content,
-    )
+    headers = {
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+    }
+    return Response(stream_with_context(generate()), headers=headers, content_type='text/plain')
 
 
 class UpdateTutorialContentRequest(BaseModel):
@@ -137,7 +164,7 @@ def update_tutorial_content(id: int, body: UpdateTutorialContentRequest):
     return UpdateTutorialContentResponse(id=tutorial.id)
 
 
-def generate_content(spec: dict, query: str, apis: list[ApiEndpoint]) -> str:
+def generate_content(spec: dict, query: str, apis: list[ApiEndpoint]) -> Stream[ChatCompletionChunk]:
     trimmed_spec = SpecFormatter(spec).narrow_api_list(apis)
     trimmed_spec_str = dumps(trimmed_spec, indent=2)
     prompt = GENERATE_TUTORIAL_PROMPT.format(query=query, spec=trimmed_spec_str)
@@ -146,7 +173,9 @@ def generate_content(spec: dict, query: str, apis: list[ApiEndpoint]) -> str:
     completion = client.chat.completions.create(
         model="gpt-4-1106-preview",
         messages=[{"role": "user", "content": prompt}],
+        stream=True,
         temperature=0,
     )
-    result = completion.choices[0].message.content
-    return result
+
+    # result = completion.choices[0].message.content
+    return completion
