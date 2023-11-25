@@ -8,10 +8,12 @@ from flask_pydantic import validate
 from pydantic import BaseModel
 
 from ..db import db
-from ..models import Spec, get_current_user
+from ..models import Spec
 from ..prompts import RELEVANT_APIS_PROMPT
 from ..types import ApiEndpoint, SpecModel, SpecLiteModel
 from ..utils import SpecFormatter
+from .middleware import user_authenticated
+
 
 spec_bp = Blueprint("spec", __name__)
 
@@ -25,10 +27,10 @@ class ListSpecsResponse(BaseModel):
 
 
 @spec_bp.route("/api/v1/specs", methods=["GET"])
+@user_authenticated
 @validate()
-def list_specs():
-    user = get_current_user()
-    specs = Spec.query.filter_by(user_id=user.id).all()
+def list_specs(current_user):
+    specs = Spec.query.filter_by(user_id=current_user.id).all()
     models = [SpecLiteModel(id=spec.id, name=spec.name) for spec in specs]
     return ListSpecsResponse(specs=models)
 
@@ -38,10 +40,10 @@ class GetSpecResponse(BaseModel):
 
 
 @spec_bp.route("/api/v1/specs/<int:id>", methods=["GET"])
+@user_authenticated
 @validate()
-def get_spec(id):
-    user = get_current_user()
-    spec: Optional[Spec] = Spec.query.filter_by(id=id, user_id=user.id).first()
+def get_spec(current_user, id: int):
+    spec: Optional[Spec] = Spec.query.filter_by(id=id, user_id=current_user.id).first()
     if not spec:
         jsonify({"error": "Spec not found"}), 404
     model = SpecModel(id=spec.id, name=spec.name, url=spec.url, content=spec.content)
@@ -59,9 +61,9 @@ class CreateSpecResponse(BaseModel):
 
 
 @spec_bp.route("/api/v1/specs", methods=["POST"])
+@user_authenticated
 @validate()
-def create_spec(body: CreateSpecRequest):
-    user = get_current_user()
+def create_spec(current_user, body: CreateSpecRequest):
     content = requests.get(body.url).json()
 
     spec_info = content.get("info", {})
@@ -73,7 +75,7 @@ def create_spec(body: CreateSpecRequest):
         name=name,
         url=body.url,
         content=dumps(content),
-        user_id=user.id,
+        user_id=current_user.id,
     )
 
     db.session.add(spec)
@@ -95,10 +97,10 @@ class RelevantApisResponse(BaseModel):
 
 
 @spec_bp.route("/api/v1/specs/<int:id>/relevant-apis", methods=["POST"])
+@user_authenticated
 @validate()
-def relevant_apis(id, body: RelevantApisRequest):
-    user = get_current_user()
-    spec = Spec.query.filter_by(id=id, user_id=user.id).first()
+def relevant_apis(current_user, id: int, body: RelevantApisRequest):
+    spec = Spec.query.filter_by(id=id, user_id=current_user.id).first()
     if not spec:
         jsonify({"error": "Spec not found"}), 404
 
