@@ -7,10 +7,12 @@ from flask_pydantic import validate
 from pydantic import BaseModel
 
 from ..db import db
-from ..models import Spec, Tutorial, get_current_user
+from ..models import Spec, Tutorial
 from ..prompts import GENERATE_TUTORIAL_PROMPT
 from ..types import ApiEndpoint, ApiEndpointList, TutorialModel, TutorialLiteModel
 from ..utils import SpecFormatter
+from .middleware import user_authenticated
+
 
 tutorial_bp = Blueprint("tutorial", __name__)
 
@@ -20,10 +22,10 @@ class ListTutorialsResponse(BaseModel):
 
 
 @tutorial_bp.route("/api/v1/tutorials", methods=["GET"])
+@user_authenticated
 @validate()
-def list_tutorials():
-    user = get_current_user()
-    tutorials = Tutorial.query.filter_by(user_id=user.id).all()
+def list_tutorials(current_user):
+    tutorials = Tutorial.query.filter_by(user_id=current_user.id).all()
     models = [
         TutorialLiteModel(id=tutorial.id, name=tutorial.name) for tutorial in tutorials
     ]
@@ -35,10 +37,10 @@ class GetTutorialResponse(BaseModel):
 
 
 @tutorial_bp.route("/api/v1/tutorials/<int:id>", methods=["GET"])
+@user_authenticated
 @validate()
-def get_tutorial(id: int):
-    user = get_current_user()
-    tutorial = Tutorial.query.filter_by(id=id, user_id=user.id).first()
+def get_tutorial(current_user, id: int):
+    tutorial = Tutorial.query.filter_by(id=id, user_id=current_user.id).first()
     if not tutorial:
         return jsonify({"error": "Tutorial not found"}), 404
     model = TutorialModel(
@@ -62,10 +64,10 @@ class CreateTutorialResponse(BaseModel):
 
 
 @tutorial_bp.route("/api/v1/tutorials", methods=["POST"])
+@user_authenticated
 @validate()
-def create_tutorial(body: CreateTutorialRequest):
-    user = get_current_user()
-    tutorial = Tutorial(name=body.name, user_id=user.id)
+def create_tutorial(current_user, body: CreateTutorialRequest):
+    tutorial = Tutorial(name=body.name, user_id=current_user.id)
     db.session.add(tutorial)
     db.session.commit()
     return CreateTutorialResponse(id=tutorial.id)
@@ -83,16 +85,16 @@ class GenerateTutorialResponse(BaseModel):
 
 
 @tutorial_bp.route("/api/v1/tutorials/<int:id>/generate-content", methods=["POST"])
+@user_authenticated
 @validate()
-def generate_tutorial_content(id: int, body: GenerateTutorialRequest):
-    user = get_current_user()
+def generate_tutorial_content(current_user, id: int, body: GenerateTutorialRequest):
     spec: Optional[Spec] = Spec.query.filter_by(
-        id=body.specId, user_id=user.id
+        id=body.specId, user_id=current_user.id
     ).first()
     if not spec:
         return jsonify({"error": "Spec not found"}), 404
 
-    tutorial = Tutorial.query.filter_by(id=id, user_id=user.id).first()
+    tutorial = Tutorial.query.filter_by(id=id, user_id=current_user.id).first()
     if not tutorial:
         return jsonify({"error": "Tutorial not found"}), 404
 
@@ -122,10 +124,10 @@ class UpdateTutorialContentResponse(BaseModel):
 
 
 @tutorial_bp.route("/api/v1/tutorials/<int:id>/content", methods=["PUT"])
+@user_authenticated
 @validate()
-def update_tutorial_content(id: int, body: UpdateTutorialContentRequest):
-    user = get_current_user()
-    tutorial = Tutorial.query.filter_by(id=id, user_id=user.id).first()
+def update_tutorial_content(current_user, id: int, body: UpdateTutorialContentRequest):
+    tutorial = Tutorial.query.filter_by(id=id, user_id=current_user.id).first()
     if not tutorial:
         return jsonify({"error": "Tutorial not found"}), 404
 
