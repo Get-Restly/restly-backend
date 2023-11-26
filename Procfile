@@ -1,1 +1,3 @@
-web: gunicorn app:app
+release: flask db upgrade
+
+web: gunicorn -t 200 app:app
