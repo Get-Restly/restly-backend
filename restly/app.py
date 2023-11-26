@@ -23,6 +23,7 @@ def create_app():
 
     db.init_app(app)
     migrate = Migrate(app, db)
+    migrate.init_app(app, db)
     app.register_blueprint(routes_bp)
 
     return app

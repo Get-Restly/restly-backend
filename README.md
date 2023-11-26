@@ -1,6 +1,7 @@
 # Setup
 
 ## 1. Create and activate virtual environment
+
 ```sh
 python -m venv venv
 source ./venv/bin/activate
@@ -12,7 +13,13 @@ source ./venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## 3. Run Flask application
+## 3. Run migrations
+
+```
+flask db upgrade
+```
+
+## 4. Run Flask application
 
 ```
 flask run
