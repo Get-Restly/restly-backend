@@ -2,6 +2,7 @@ import os
 
 from flask import Flask
 from flask_cors import CORS
+from flask_migrate import Migrate
 
 from .config import DevelopmentConfig, ProductionConfig
 from .db import db
@@ -20,10 +21,8 @@ def create_app():
         app.config.from_object(ProductionConfig)
         CORS(app)
 
-    app.register_blueprint(routes_bp)
     db.init_app(app)
-
-    with app.app_context():
-        db.create_all()
+    migrate = Migrate(app, db)
+    app.register_blueprint(routes_bp)
 
     return app

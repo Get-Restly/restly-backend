@@ -1,9 +1,14 @@
 from datetime import datetime
+from uuid import uuid4
 
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from restly.db import db
+
+
+def generate_user_token() -> str:
+    return uuid4().hex
 
 
 class TimestampMixin:
@@ -20,7 +25,8 @@ class TimestampMixin:
 
 class User(TimestampMixin, db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(db.String, unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(db.String, unique=True, nullable=True)
+    token: Mapped[str] = mapped_column(db.String, nullable=False, default=lambda: generate_user_token(), unique=True)
 
 
 class Spec(TimestampMixin, db.Model):
@@ -45,7 +51,3 @@ class Tutorial(TimestampMixin, db.Model):
     user_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
     )
-
-
-def get_current_user() -> User:
-    return User.query.first()
