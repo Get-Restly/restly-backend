@@ -166,8 +166,11 @@ def update_tutorial_content(current_user, id: int, body: UpdateTutorialContentRe
 
 def generate_content(spec: dict, query: str, apis: list[ApiEndpoint]) -> Stream[ChatCompletionChunk]:
     trimmed_spec = SpecFormatter(spec).narrow_api_list(apis)
-    trimmed_spec_str = dumps(trimmed_spec, indent=2)
-    prompt = GENERATE_TUTORIAL_PROMPT.format(query=query, spec=trimmed_spec_str)
+    included_refs = SpecFormatter(spec).collect_refs(trimmed_spec)
+    ref_tree = SpecFormatter(spec).select_nodes(included_refs)
+    final_spec = {**trimmed_spec, **ref_tree}
+    final_spec_str = dumps(final_spec, indent=2)    
+    prompt = GENERATE_TUTORIAL_PROMPT.format(query=query, spec=final_spec_str)
     client = openai.OpenAI()
 
     completion = client.chat.completions.create(
@@ -176,6 +179,4 @@ def generate_content(spec: dict, query: str, apis: list[ApiEndpoint]) -> Stream[
         stream=True,
         temperature=0,
     )
-
-    # result = completion.choices[0].message.content
     return completion
