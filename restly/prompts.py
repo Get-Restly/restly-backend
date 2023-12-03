@@ -19,6 +19,7 @@ You must follow these guidelines when creating the tutorial:
 - API Focus: Strictly use only the APIs in the provided OpenAPI Spec. Do not use any other APIs or SDK clients.
 - Practicality: The tutorial must be written in a way that a developer can follow it and use the APIs. Offer guidance on how to prepare and use data effectively with these APIs.
 - Numbered Steps: Every step in the tutorial will be numbered for clarity and easy reference.
+- Code Snippets: When possible, steps in the tutorial will have a code snippet that demonstrates the use of the API.
 
 TUTORIAL DESCRIPTION:
 {query}
