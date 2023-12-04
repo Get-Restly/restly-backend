@@ -53,4 +53,4 @@ class Tutorial(TimestampMixin, db.Model):
     user_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
     )
-    server: Mapped[str] = mapped_column(db.String, nullable=True, default=None)
+    server: Mapped[str] = mapped_column(db.String, nullable=False, default="")
