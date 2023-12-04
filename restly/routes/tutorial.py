@@ -22,6 +22,7 @@ from .middleware import user_authenticated
 tutorial_bp = Blueprint("tutorial", __name__)
 logging.basicConfig(level=logging.INFO)
 
+
 class ListTutorialsResponse(BaseModel):
     tutorials: list[TutorialLiteModel]
 
@@ -82,6 +83,7 @@ class GenerateTutorialRequest(BaseModel):
     specId: int
     query: str
     apis: list[ApiEndpoint]
+    server: str
 
 
 class GenerateTutorialResponse(BaseModel):
@@ -108,14 +110,18 @@ def generate_tutorial_content(current_user, id: int, body: GenerateTutorialReque
         tutorial.input = body.query
         tutorial.relevant_apis = relevant_apis
         tutorial.spec_id = spec.id
+        tutorial.server = body.server
 
         db.session.add(tutorial)
         db.session.commit()
-    
+
     # Streams the response
-    completion = generate_content(loads(spec.content), body.query, body.apis)
+    completion = generate_content(
+        loads(spec.content), body.query, body.apis, body.server
+    )
+
     def generate():
-        content_aggregated = ''
+        content_aggregated = ""
         try:
             for chunk in completion:
                 for choice in chunk.choices:
@@ -133,11 +139,10 @@ def generate_tutorial_content(current_user, id: int, body: GenerateTutorialReque
     #     content=content,
     # )
 
-    headers = {
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-    }
-    return Response(stream_with_context(generate()), headers=headers, content_type='text/plain')
+    headers = {"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return Response(
+        stream_with_context(generate()), headers=headers, content_type="text/plain"
+    )
 
 
 class UpdateTutorialContentRequest(BaseModel):
@@ -164,13 +169,17 @@ def update_tutorial_content(current_user, id: int, body: UpdateTutorialContentRe
     return UpdateTutorialContentResponse(id=tutorial.id)
 
 
-def generate_content(spec: dict, query: str, apis: list[ApiEndpoint]) -> Stream[ChatCompletionChunk]:
+def generate_content(
+    spec: dict, query: str, apis: list[ApiEndpoint], server: str
+) -> Stream[ChatCompletionChunk]:
     trimmed_spec = SpecFormatter(spec).narrow_api_list(apis)
     included_refs = SpecFormatter(spec).collect_refs(trimmed_spec)
     ref_tree = SpecFormatter(spec).select_nodes(included_refs)
     final_spec = {**trimmed_spec, **ref_tree}
-    final_spec_str = dumps(final_spec, indent=2)    
-    prompt = GENERATE_TUTORIAL_PROMPT.format(query=query, spec=final_spec_str)
+    final_spec_str = dumps(final_spec, indent=2)
+    prompt = GENERATE_TUTORIAL_PROMPT.format(
+        query=query, spec=final_spec_str, server=server
+    )
     client = openai.OpenAI()
 
     completion = client.chat.completions.create(
