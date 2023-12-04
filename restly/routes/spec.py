@@ -23,7 +23,7 @@ DEFAULT_SPEC_VERSION = "1.0.0"
 
 
 class ListSpecsResponse(BaseModel):
-    specs: list[SpecLiteModel]
+    specs: list[SpecModel]
 
 
 @spec_bp.route("/api/v1/specs", methods=["GET"])
@@ -31,7 +31,10 @@ class ListSpecsResponse(BaseModel):
 @validate()
 def list_specs(current_user):
     specs = Spec.query.filter_by(user_id=current_user.id).all()
-    models = [SpecLiteModel(id=spec.id, name=spec.name) for spec in specs]
+    models = [
+        SpecModel(id=spec.id, name=spec.name, url=spec.url, content=spec.content)
+        for spec in specs
+    ]
     return ListSpecsResponse(specs=models)
 
 
