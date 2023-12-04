@@ -26,7 +26,9 @@ class TimestampMixin:
 class User(TimestampMixin, db.Model):
     id: Mapped[int] = mapped_column(db.Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(db.String, unique=True, nullable=True)
-    token: Mapped[str] = mapped_column(db.String, nullable=False, default=lambda: generate_user_token(), unique=True)
+    token: Mapped[str] = mapped_column(
+        db.String, nullable=False, default=lambda: generate_user_token(), unique=True
+    )
 
 
 class Spec(TimestampMixin, db.Model):
@@ -50,4 +52,7 @@ class Tutorial(TimestampMixin, db.Model):
     )
     user_id: Mapped[int] = mapped_column(
         db.Integer, db.ForeignKey("user.id"), nullable=False
+    )
+    server: Mapped[str] = mapped_column(
+        db.String, nullable=False, default="", server_default="<infer api>"
     )

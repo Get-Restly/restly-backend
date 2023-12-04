@@ -24,6 +24,9 @@ You must follow these guidelines when creating the tutorial:
 TUTORIAL DESCRIPTION:
 {query}
 
+SERVER ENDPOINT:
+{server}
+
 OpenAPI SPEC:
 {spec}
 """
