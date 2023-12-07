@@ -173,7 +173,6 @@ def generate_content(
     spec: dict, query: str, apis: list[ApiEndpoint], server: str
 ) -> Stream[ChatCompletionChunk]:
     trimmed_spec = SpecFormatter(spec).narrow_api_list(apis)
-    logging.info("Prompt for genning tutorial %s", dumps(trimmed_spec, indent=2))
 
     included_refs = SpecFormatter(spec).collect_refs(trimmed_spec)
     ref_tree = SpecFormatter(spec).select_nodes(included_refs)
@@ -189,7 +188,7 @@ def generate_content(
         query=query, spec=final_spec_str, server=server
     )
 
-    logging.info("Prompt for genning tutorial %s", prompt)
+    # logging.info("Prompt for genning tutorial %s", prompt)
 
     client = openai.OpenAI()
 
