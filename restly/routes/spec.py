@@ -93,6 +93,7 @@ def create_spec(current_user, body: CreateSpecRequest):
 
 class RelevantApisRequest(BaseModel):
     query: str
+    count: int = 10
 
 
 class RelevantApisResponse(BaseModel):
@@ -111,7 +112,7 @@ def relevant_apis(current_user, id: int, body: RelevantApisRequest):
     trimmed_spec = SpecFormatter(spec_content).trim_paths_only()
     trimmed_spec_str = dumps(trimmed_spec)
 
-    prompt = RELEVANT_APIS_PROMPT.format(query=body.query, spec=trimmed_spec_str)
+    prompt = RELEVANT_APIS_PROMPT.format(query=body.query, spec=trimmed_spec_str, count=body.count)
     client = openai.OpenAI()
     completion = client.chat.completions.create(
         model="gpt-4-1106-preview",
