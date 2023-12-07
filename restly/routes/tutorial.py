@@ -173,13 +173,24 @@ def generate_content(
     spec: dict, query: str, apis: list[ApiEndpoint], server: str
 ) -> Stream[ChatCompletionChunk]:
     trimmed_spec = SpecFormatter(spec).narrow_api_list(apis)
+    logging.info("Prompt for genning tutorial %s", dumps(trimmed_spec, indent=2))
+
     included_refs = SpecFormatter(spec).collect_refs(trimmed_spec)
     ref_tree = SpecFormatter(spec).select_nodes(included_refs)
-    final_spec = {**trimmed_spec, **ref_tree}
+    security_schemes = {
+        key: value
+        for key, value in SpecFormatter(spec).extract_security_info().items()
+        if value
+    }
+
+    final_spec = {**trimmed_spec, **ref_tree, **security_schemes}
     final_spec_str = dumps(final_spec, indent=2)
     prompt = GENERATE_TUTORIAL_PROMPT.format(
         query=query, spec=final_spec_str, server=server
     )
+
+    logging.info("Prompt for genning tutorial %s", prompt)
+
     client = openai.OpenAI()
 
     completion = client.chat.completions.create(

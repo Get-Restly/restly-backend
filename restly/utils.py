@@ -40,7 +40,7 @@ class SpecFormatter:
         return {
             "paths": trimmed_paths,
         }
-    
+
     def collect_refs(self, start_node: dict) -> set[str]:
         """
         Traverses the node and collects all $ref values recursively
@@ -54,10 +54,12 @@ class SpecFormatter:
             for ref in refs:
                 if ref not in result:
                     result.add(ref)
-                    ref_node = SpecFormatter.get_node(self, self._spec, ref[2:].split("/"))
+                    ref_node = SpecFormatter.get_node(
+                        self, self._spec, ref[2:].split("/")
+                    )
                     queue.append(ref_node)
         return result
-    
+
     def select_nodes(self, refs: set[str]) -> dict:
         """
         Selects nodes from the spec based on the refs. Preserves the structure of the spec.
@@ -68,7 +70,7 @@ class SpecFormatter:
             node = SpecFormatter.get_node(self, self._spec, path)
             result = SpecFormatter._merge_node(result, node, path)
         return result
-    
+
     @staticmethod
     def _merge_node(result: dict, node: dict, path: list[str]) -> dict:
         if len(path) == 0:
@@ -120,3 +122,25 @@ class SpecFormatter:
                 continue
             obj[key] = method_obj[key]
         return obj
+
+    def extract_security_info(self) -> dict:
+        security_info = {}
+
+        # Extract the top-level security object
+        if "security" in self._spec:
+            security_info["global_security"] = self._spec["security"]
+
+        # Extract security schemas from the components object
+        if "components" in self._spec and "securitySchemes" in self._spec["components"]:
+            security_info["security_schemes"] = self._spec["components"][
+                "securitySchemes"
+            ]
+
+        # Extract per-path level security
+        security_info["path_security"] = {}
+        if "paths" in self._spec:
+            for path, path_item in self._spec["paths"].items():
+                if "security" in path_item:
+                    security_info["path_security"][path] = path_item["security"]
+
+        return security_info
